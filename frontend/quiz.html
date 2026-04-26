@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Online Quiz - Active</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="quiz-layout">
+      <!-- Left side: Quiz Area -->
+      <div class="glass-card" style="display: flex; flex-direction: column;">
+        <h2 id="quizTitle">Loading Quiz...</h2>
+        <div id="questionContainer" style="flex-grow: 1; margin-top: 1rem;">
+          <h3 id="questionText">Loading question...</h3>
+          <div class="options-grid" id="optionsGrid"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 2rem;">
+          <button id="prevBtn" class="btn" style="width: 48%; display: none;">Previous</button>
+          <button id="nextBtn" class="btn" style="width: 48%; display: none;">Next</button>
+          <button id="submitBtn" class="btn" style="width: 100%; display: none; background: linear-gradient(135deg, var(--success), #059669);">Submit Quiz</button>
+        </div>
+      </div>
+
+      <!-- Right side: Sidebar (Timer + Leaderboard) -->
+      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <div class="glass-card">
+          <h3 style="text-align: center; color: #94a3b8; font-size: 1.2rem;">Time Remaining</h3>
+          <div class="timer" id="timer">00:00</div>
+        </div>
+        
+        <div class="glass-card" style="flex-grow: 1;">
+          <h3 style="color: var(--primary-color);">Live Leaderboard</h3>
+          <div id="leaderboardList" style="margin-top: 1rem;">
+            <!-- Leaderboard items go here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const studentId = sessionStorage.getItem('studentId');
+    const quizId = sessionStorage.getItem('quizId');
+    let ttl = parseInt(sessionStorage.getItem('ttl'), 10);
+    
+    if (!studentId || !quizId) {
+      window.location.href = '/';
+    }
+
+    let questions = [];
+    let currentQuestionIndex = 0;
+    let timerInterval;
+    let leaderboardInterval;
+
+    async function loadQuiz() {
+      try {
+        const res = await fetch(`/api/quiz/${quizId}`);
+        const quiz = await res.json();
+        document.getElementById('quizTitle').innerText = quiz.title;
+        questions = quiz.question_ids;
+        renderQuestion();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function renderQuestion() {
+      if (questions.length === 0) return;
+      const q = questions[currentQuestionIndex];
+      document.getElementById('questionText').innerText = `Q${currentQuestionIndex + 1}: ${q.question_text}`;
+      
+      const grid = document.getElementById('optionsGrid');
+      grid.innerHTML = '';
+      
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      const submitBtn = document.getElementById('submitBtn');
+
+      prevBtn.style.display = currentQuestionIndex > 0 ? 'block' : 'none';
+      
+      if (currentQuestionIndex < questions.length - 1) {
+        nextBtn.style.display = 'block';
+        submitBtn.style.display = 'none';
+        
+        if (currentQuestionIndex === 0) {
+          nextBtn.style.width = '100%';
+        } else {
+          nextBtn.style.width = '48%';
+        }
+      } else {
+        nextBtn.style.display = 'none';
+        submitBtn.style.display = 'block';
+        submitBtn.style.width = currentQuestionIndex === 0 ? '100%' : '48%';
+      }
+
+      // Render options depending on type
+      if (q.type === 'MCQ' || q.type === 'True/False') {
+        const optionsAttr = q.attributes.find(a => a.k === 'options');
+        if (optionsAttr) {
+          optionsAttr.v.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => submitAnswer(q._id, opt, btn);
+            grid.appendChild(btn);
+          });
+        }
+      } else if (q.type === 'Coding') {
+        // Show code snippet if present
+        const snippetAttr = q.attributes.find(a => a.k === 'code_snippet');
+        if (snippetAttr) {
+          const pre = document.createElement('pre');
+          pre.style.cssText = 'background:rgba(0,0,0,0.6);color:#7dd3fc;padding:1rem;border-radius:8px;overflow-x:auto;font-family:monospace;font-size:0.85rem;margin-bottom:1rem;white-space:pre-wrap;';
+          pre.innerText = snippetAttr.v;
+          grid.appendChild(pre);
+        }
+        const label = document.createElement('p');
+        label.style.color = '#94a3b8';
+        label.innerText = 'Type your answer / expected output below:';
+        grid.appendChild(label);
+
+        const input = document.createElement('textarea');
+        input.style.cssText = 'width:100%;min-height:100px;background:rgba(0,0,0,0.5);color:white;padding:1rem;font-family:monospace;border-radius:6px;border:1px solid #334155;resize:vertical;';
+        input.placeholder = 'Enter expected output or explanation...';
+        input.id = 'codingAnswer';
+        grid.appendChild(input);
+
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.innerText = 'Submit Answer';
+        btn.style.marginTop = '1rem';
+        btn.onclick = () => submitAnswer(q._id, input.value, btn);
+        grid.appendChild(btn);
+      } else if (q.type === 'Descriptive') {
+        const label = document.createElement('p');
+        label.style.cssText = 'color:#94a3b8;margin-bottom:0.5rem;';
+        label.innerText = 'Write your detailed answer below:';
+        grid.appendChild(label);
+
+        const input = document.createElement('textarea');
+        input.style.cssText = 'width:100%;min-height:160px;background:rgba(0,0,0,0.4);color:white;padding:1rem;font-family:inherit;font-size:0.95rem;border-radius:6px;border:1px solid #334155;resize:vertical;line-height:1.6;';
+        input.placeholder = 'Explain your answer in detail...';
+        input.id = 'descriptiveAnswer';
+        grid.appendChild(input);
+
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.innerText = 'Submit Answer';
+        btn.style.marginTop = '1rem';
+        btn.onclick = () => submitAnswer(q._id, input.value, btn);
+        grid.appendChild(btn);
+      }
+    }
+
+    async function submitAnswer(questionId, answer, btnElement) {
+      document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+      if(btnElement.classList.contains('option-btn')) {
+        btnElement.classList.add('selected');
+      }
+
+      try {
+        const res = await fetch(`/api/quiz/${quizId}/answer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentId, questionId, answer })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+           console.log(data.error); 
+           if(data.error === 'Answer already submitted for this question') {
+             alert('You can only answer once (Spam Prevention NX triggered)');
+           }
+        }
+      } catch(err) {
+        console.error(err);
+      }
+    }
+
+    async function fetchLeaderboard() {
+      try {
+        const res = await fetch(`/api/quiz/${quizId}/leaderboard`);
+        const data = await res.json();
+        const list = document.getElementById('leaderboardList');
+        list.innerHTML = '';
+        data.forEach((item, index) => {
+          const div = document.createElement('div');
+          div.className = 'leaderboard-item';
+          div.innerHTML = `<span>#${index + 1} ${item.studentId === studentId ? '(You)' : item.studentId}</span> <span>${item.score} pts</span>`;
+          list.appendChild(div);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function submitQuiz() {
+      clearInterval(timerInterval);
+      clearInterval(leaderboardInterval);
+      
+      try {
+        const res = await fetch(`/api/quiz/${quizId}/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentId })
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          window.location.href = `/results.html?attemptId=${data.attemptId}`;
+        } else {
+          alert('Error submitting quiz');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function startTimer() {
+      const timerEl = document.getElementById('timer');
+      timerInterval = setInterval(() => {
+        ttl--;
+        const m = Math.floor(Math.max(0, ttl) / 60).toString().padStart(2, '0');
+        const s = (Math.max(0, ttl) % 60).toString().padStart(2, '0');
+        timerEl.innerText = `${m}:${s}`;
+        
+        if (ttl <= 0) {
+          clearInterval(timerInterval);
+          submitQuiz(); 
+        }
+      }, 1000);
+    }
+
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        renderQuestion();
+      }
+    });
+
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      if (currentQuestionIndex < questions.length - 1) {
+        currentQuestionIndex++;
+        renderQuestion();
+      }
+    });
+
+    document.getElementById('submitBtn').addEventListener('click', () => {
+      if(confirm('Are you sure you want to submit?')) {
+        submitQuiz();
+      }
+    });
+
+    loadQuiz();
+    startTimer();
+    fetchLeaderboard();
+    leaderboardInterval = setInterval(fetchLeaderboard, 5000);
+  </script>
+</body>
+</html>

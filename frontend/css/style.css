@@ -1,0 +1,123 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --primary-color: #7c3aed;
+  --success: #10b981;
+  --danger: #ef4444;
+}
+
+body {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f172a, #1e1b4b);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: white;
+  padding: 2rem 1rem;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.quiz-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .quiz-layout { grid-template-columns: 1fr; }
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 2rem;
+  backdrop-filter: blur(10px);
+}
+
+h2 { font-size: 1.6rem; color: #a78bfa; margin-bottom: 0.5rem; }
+h3 { font-size: 1.2rem; color: #e2e8f0; }
+
+.timer {
+  font-size: 3rem;
+  font-weight: bold;
+  text-align: center;
+  color: #7dd3fc;
+  letter-spacing: 2px;
+  margin-top: 0.5rem;
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 600px) {
+  .options-grid { grid-template-columns: 1fr; }
+}
+
+.option-btn {
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  color: white;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.option-btn:hover {
+  background: rgba(124, 58, 237, 0.3);
+  border-color: #7c3aed;
+}
+
+.option-btn.selected {
+  background: rgba(124, 58, 237, 0.5);
+  border-color: #a78bfa;
+  color: #e9d5ff;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, var(--primary-color), #4f46e5);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn:hover { opacity: 0.88; }
+
+.leaderboard-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #cbd5e1;
+}
+
+.leaderboard-item:first-child {
+  background: rgba(124, 58, 237, 0.25);
+  color: #e9d5ff;
+  font-weight: bold;
+}
+
+#questionText {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #e2e8f0;
+}
